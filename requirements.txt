@@ -1,17 +1,13 @@
-# --- 数据处理与科学计算 ---
 pandas
 numpy
 scikit-learn
 joblib
 
-# --- 后端接口 (FastAPI) ---
 fastapi
 uvicorn
 pydantic
 
-# --- 前端看板 (Streamlit) ---
 streamlit
 plotly
 
-# --- 网络请求 (用于前后端联调) ---
 requests

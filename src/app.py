@@ -2,6 +2,7 @@ import streamlit as st
 from pathlib import Path
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import joblib  # Used for loading model files
 import os
 
@@ -28,18 +29,19 @@ def load_data():
 def load_trained_models():
     """Load models and feature lists from local files to avoid redundant training"""
     try:
-        rf = joblib.load(model_dir / 'rf_model.pkl')
+        rf_cls = joblib.load(model_dir / 'rf_model.pkl')
+        rf_reg = joblib.load(model_dir / 'rf_reg_model.pkl')
         iso = joblib.load(model_dir / 'iso_model.pkl')
         # Load the feature order recorded during training to prevent errors
         features = joblib.load(model_dir / 'feature_names.pkl')
-        return rf, iso, features
+        return rf_cls, rf_reg, iso, features
     except FileNotFoundError:
         st.error("Model files not found! Please ensure the 'train.py' script has been run.")
         st.stop()
 
 # Initialize data and models
 df = load_data()
-rf_model, iso_model, feature_cols = load_trained_models()
+rf_cls, rf_reg, iso_model, feature_cols = load_trained_models()
 
 # --- 3. Sidebar: Real-time Input Simulator ---
 st.sidebar.header("Real-time Sensor Simulator")
@@ -69,22 +71,51 @@ st.title("Smart Factory: Equipment Health Monitoring System (Inference)")
 st.markdown("This version loads trained models directly from disk, saving training resources.")
 
 # Row 1: Key Metrics
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 c1.metric("Total Samples", len(df))
 c2.metric("Total Failures", int(df['Failure'].sum()))
 c3.metric("Feature Dimensions", len(feature_cols))
+health_score = max(0, int(100 - (input_df['Vibration'].iloc[0] * 50)))
+c4.metric("Real-time Health Score", f"{max(0, int(health_score))}%")
 
 st.divider()
 
 # Row 2: Real-time Prediction Panel
 res1, res2 = st.columns(2)
 with res1:
-    st.subheader("Failure Risk Prediction")
-    # Get failure probability
-    prob = rf_model.predict_proba(input_df)[0][1]
+    st.subheader("Failure Risk Prediction and RUL")
+    # Get failure probability and RUL
+    prob = rf_cls.predict_proba(input_df)[0][1]
+    predicted_rul = rf_reg.predict(input_df)[0]
+
+    # RUL panel
+    fig_gauge = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=predicted_rul,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "Remaining Useful Life (RUL) in hours", 'font': {'size': 18}},
+        gauge={
+            'axis': {'range': [0, 500], 'tickwidth': 1},
+            'bar': {'color': "darkblue"},
+            'steps': [
+                {'range': [0, 100], 'color': "red"},
+                {'range': [100, 250], 'color': "orange"},
+                {'range': [250, 500], 'color': "green"}
+            ],
+            'threshold': {
+                'line': {'color': "black", 'width': 4},
+                'thickness': 0.75,
+                'value': 480  # Assuming a maximum useful life of 500
+            }
+        }
+    ))
+    fig_gauge.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20))
+    st.plotly_chart(fig_gauge, use_container_width=True)
+
     if prob > 0.5:
         st.error(f"High Risk! Failure Probability: {prob:.2%}")
-        st.button("Create Maintenance Order Now")
+        if st.button("Create Maintenance Order Now"):
+            st.toast("Work order submitted to ERP")
     else:
         st.success(f"Healthy Status (Failure Probability: {prob:.2%})")
 
@@ -101,11 +132,46 @@ st.divider()
 
 # Row 3: Historical Trends
 st.subheader("📈 Equipment Degradation Curve (History)")
-fig = px.line(df.tail(1000), x='OperatingHours', y='Vibration',
-              color='Failure',
-              color_discrete_map={0: "green", 1: "red"},
-              title='Vibration Intensity vs Time (Red indicates failure points)')
-st.plotly_chart(fig, use_container_width=True)
 
-if st.checkbox("Show underlying feature list"):
-    st.write("Feature order used during model training:", feature_cols)
+all_visual_features = ['Vibration', 'Temperature', 'Pressure', 'Vibration_Mean', 'RUL']
+selected_features = st.multiselect(
+    "Select sensor metrics to monitor:",
+    options=all_visual_features,
+    default=['Vibration', 'Temperature']  # Default display: Vibration and Temperature
+)
+
+if selected_features:
+    # Prepare plot data (taking the last 500 data points for better performance/smoothness)
+    plot_df = df.tail(500).copy()
+
+    # Use Plotly to draw a multi-line chart
+    # Setting y as the list of features selected by the user
+    fig_multi = px.line(
+        plot_df,
+        x='OperatingHours',
+        y=selected_features,
+        labels={'OperatingHours': 'Operating Hours (Hours)', 'value': 'value', 'variable': 'Sensor Metric'},
+        title='Sensor Feature Trends Over Time'
+    )
+
+    # Enhance visuals: Mark failure points
+    failure_events = plot_df[plot_df['Failure'] == 1]
+    if not failure_events.empty:
+        for feature in selected_features:
+            fig_multi.add_scatter(
+                x=failure_events['OperatingHours'],
+                y=failure_events[feature],
+                mode='markers',
+                marker=dict(color='red', size=8, symbol='x'),
+                name=f'{feature} Failure Point',
+                showlegend=True
+            )
+
+    fig_multi.update_layout(
+        hovermode="x unified",  # Display all selected metrics for a specific time point on hover
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+    st.plotly_chart(fig_multi, use_container_width=True)
+else:
+    st.info("Please select at least one metric from the multi-select box above")

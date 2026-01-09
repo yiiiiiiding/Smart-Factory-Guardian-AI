@@ -11,6 +11,7 @@ model_dir = BASE_DIR / "models"
 app = FastAPI(title="Equipment Health Monitoring API")
 
 rf_model = joblib.load(model_dir / 'rf_model.pkl')
+rf_reg_model = joblib.load(model_dir / 'rf_reg_model.pkl')
 iso_model = joblib.load(model_dir / 'iso_model.pkl')
 
 
@@ -46,12 +47,19 @@ async def predict_failure(input: SensorInput):
 
     failure = rf_model.predict(data)[0]
     prob = rf_model.predict_proba(data)[0][1]
+    rul_pred = rf_reg_model.predict(data)[0]
     is_anomaly = iso_model.predict(data)[0] == -1
 
     return {
-        'failure_prediction': 'High Risk' if failure == 1 else 'Normal',
-        'failure_probability': f"{prob:.2%}",
-        'anomaly_detected': bool(is_anomaly)
+        'status':{
+            'failure_prediction': 'High Risk' if failure == 1 else 'Normal',
+            'failure_probability': f"{prob:.2%}",
+            'anomaly_detected': bool(is_anomaly)
+        },
+        'prediction_metrics': {
+            'remaining_useful_life': f"{max(0, rul_pred):.2f} hours",
+            'health_index': f"{max(0, 100 - prob * 100):.1f}%"
+        }
     }
 
 
