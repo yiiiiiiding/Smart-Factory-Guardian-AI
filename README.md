@@ -8,6 +8,23 @@ This project provides an end-to-end AI solution for monitoring industrial equipm
 
 The system integrates a complete machine learning pipeline—from data synthesis and feature engineering to model serving and real-time visualization.
 
+## Directory Structure
+
+```plaintext
+Smart-Factory-Guardian-AI/
+├── data/                    
+├── models/                  
+├── src/                     
+│   ├── generate_realistic_data.py  
+│   ├── train.py                    
+│   ├── api.py                      
+│   └── app.py                      
+├── .gitignore               
+├── LICENSE                  
+├── README.md                
+└── requirements.txt         
+```
+
 ### 🌟 Key Features
 * **Realistic Data Synthesis**: Generated IoT sensor data based on industrial degradation trends (linear/non-linear wear-and-tear).
 * **Dual-Model Strategy**: 
@@ -24,7 +41,7 @@ The system integrates a complete machine learning pipeline—from data synthesis
 * **Visualization**: Plotly, Seaborn
 * **Environment**: Conda / Pip / Docker (Optional)
 
-# 🚀 Quick Start
+## 🚀 Quick Start
 
 Follow these steps to get the system up and running on your local machine.
 
@@ -36,41 +53,43 @@ Follow these steps to get the system up and running on your local machine.
 Clone the repository and install the required dependencies:
 
 ```bash
-# Clone the repository
-git clone [https://github.com/yiiiiiiding/Smart-Factory-Guardian-AI.git](https://github.com/yiiiiiiding/Smart-Factory-Guardian-AI.git)
+git clone https://github.com/yiiiiiiding/Smart-Factory-Guardian-AI.git
+```
+```bash
 cd Smart-Factory-Guardian-AI
-
-# Install dependencies
+```
+Install dependencies
+```bash
 pip install -r requirements.txt
 ```
 ### 3. Running the Pipeline
 The project follows a linear workflow. Please run the scripts in the following order:
 * **Step 1:** Generate Synthetic Data
 ```bash
-python generate_realistic_data.py
+python src/generate_realistic_data.py
 ```
 * **Step 2:** Train the Models
 
 Train the Random Forest and Isolation Forest models and save them as .pkl files.
 ```bash
-python train.py
+python src/train.py
 ```
 * **Step 3:** Start the Backend API (FastAPI)
 
 Launch the inference service.
 ```bash
-python api.py
+python src/api.py
 ```
 Once started, visit http://127.0.0.1:8000/docs to test the API via Swagger UI.
 * **Step 4:** Launch the Dashboard (Streamlit)
 
 Open a new terminal and run the interactive monitoring panel.
 ```bash
-python -m streamlit run app.py
+python -m streamlit run src/app.py
 ```
 The dashboard will automatically open in your default browser at http://localhost:8501.
 
-# 💡 Notes for Beginners
+# 💡 Notes
 * **Model Files:** Ensure rf_model.pkl, iso_model.pkl, and feature_names.pkl are generated in the root directory before starting the API or Dashboard.
 * **Environment:** If you are using PyCharm, make sure your Terminal is switched to the correct Conda environment.
 * **Ports:** Ensure ports 8000 (FastAPI) and 8501 (Streamlit) are not being used by other applications.
