@@ -53,7 +53,7 @@ Follow these steps to get the system up and running on your local machine.
 Clone the repository and install the required dependencies:
 
 ```bash
-git clone https://github.com/yiiiiiiding/Smart-Factory-Guardian-AI.git
+git clone https://github.com/0YIDING/Smart-Factory-Guardian-AI.git
 ```
 ```bash
 cd Smart-Factory-Guardian-AI
